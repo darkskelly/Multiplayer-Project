@@ -2,7 +2,7 @@ import socket
 from _thread import *
 import sys
 
-server = ""
+server = "192.168.1.119"
 port = 5555
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Types of connections we can make
@@ -32,7 +32,9 @@ def threaded_client(conn):
             conn.sendall(str.encode(reply)) #encodes data
         except:
             break
-
+    print("Lost connection")
+    conn.close()
+    
 
 while True:
     conn, addr = s.accept() #accepts any connections 
