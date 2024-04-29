@@ -11,26 +11,48 @@ class Player():
         self.x = x
         self.y = y
         self.width = width
+        self.height = height
         self.colour = colour
         self.rect = (x,y,width,height)
+        self.vel = 3
     def draw(self,win):
         pygame.draw.rect(win, self.colour, self.rect)
-    
+     
     def move(self):
-    pygame.key.get_pressed()
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_a]:
+            self.x -= self.vel
+
+        if keys[pygame.K_d]:
+            self.x += self.vel
+
+        if keys[pygame.K_w]:
+            self.y -= self.vel
+
+        if keys[pygame.K_s]:
+            self.y += self.vel
+        self.rect = (self.x,self.y,self.width, self.height)
 
 
-def redrawWindow():
+
+
+def redrawWindow(win,p):
     win.fill((255,255,255))
+    p.draw(win)
     pygame.display.update()
 
 def main():
     run = True
-
+    p = Player(50,50,100,100,(0,255,0))
+    clock = pygame.time.Clock()
     while run:
+        clock.tick(60)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
-
-        redrawWindow()
+        
+        p.move()
+        redrawWindow(win , p)
+main()
