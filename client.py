@@ -1,4 +1,5 @@
 import pygame
+from network import Network
 width = 500
 height = 500
 win = pygame.display.set_mode((width, height))
@@ -44,6 +45,8 @@ def redrawWindow(win,p):
 
 def main():
     run = True
+    n = Network()
+    startPos = n.getPos()   
     p = Player(50,50,100,100,(0,255,0))
     clock = pygame.time.Clock()
     while run:
