@@ -17,17 +17,18 @@ def main():
     run = True
     n = Network()
     player1 = n.getP()
+   
 
     clock = pygame.time.Clock()
     while run:
         clock.tick(60)
-        player2 = n.send(p)
+        player2 = n.send(player1)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
         
-        p.move()
+        player1.move()
         redrawWindow(win , player1, player2)
 main()
