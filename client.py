@@ -4,7 +4,7 @@ from player import Player
 width = 500
 height = 500
 win = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Clit")
+pygame.display.set_caption("Penis")
 
 
 
