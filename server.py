@@ -30,6 +30,7 @@ class GameServer:
             "difficulty": "normal",
             "max_players": 10
         }
+        self.player_spawn_points = [(0,0), (400,0)]
 
     #def load_map_data():
     #    pass
@@ -63,14 +64,10 @@ game_server = GameServer()
 
 
 def threaded_client(conn, player_id):
-    global game_server
     conn.send(pickle.dumps(game_server.players[player_id]))
-
     while True:
         try:
             data = pickle.loads(conn.recv(2048))
-
-
             if not data: #If no data is being recieved
                 print("Disconnected")
                 break
@@ -95,10 +92,13 @@ currentPlayer = 0
 while True:
     conn, addr = s.accept() #accepts any connections 
     print("Connected to :", addr)
+
+#assign player spawn points based on the player ID
+    spawn_point = game_server.player_spawn_points[currentPlayer]
     if currentPlayer == 0:
-        player = Player(0, 0, 50, 50, (255, 0, 0), currentPlayer)
+        player = Player(spawn_point[0], spawn_point[1], 50, 50, (255, 0, 0), currentPlayer)
     else:
-        player = Player(0,0, 50, 50, (0, 0, 255), currentPlayer)
+        player = Player(spawn_point[0], spawn_point[1], 50, 50, (0, 0, 255), currentPlayer)
     game_server.add_player(currentPlayer, player)
     start_new_thread(threaded_client, (conn, currentPlayer))
     currentPlayer += 1

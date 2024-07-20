@@ -1,6 +1,7 @@
 import pygame
 from network import Network
 from player import Player
+
 width = 500
 height = 500
 win = pygame.display.set_mode((width, height))
@@ -44,8 +45,11 @@ def main():
     else:
         print("Error: player1 data is not in expected format")
         return
+    
+    #initialises player_ids
+    player2_id = 1 if player1.id == 0 else 0
+    player2 = Player(0, 0, 50, 50, (0, 0, 255), player_id=player2_id)
 
-    player2 = Player(0, 0, 50, 50, (0, 0, 255), player_id=1 if player1.id == 0 else 0)
 
     # Initialize player2 correctly based on player1's color
     if hasattr(player1, 'colour'):
@@ -70,6 +74,7 @@ def main():
                     player2_data = dict_to_player(player2_data)
                     player2.x = player2_data.x
                     player2.y = player2_data.y
+                    player2.colour = player2_data.colour
                     player2.update()
                 except ValueError as e:
                     print(f"Error updating player2: {e}")
