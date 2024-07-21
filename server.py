@@ -3,8 +3,9 @@ from _thread import start_new_thread
 from player import Player
 import pickle
 from loot import loot
+import random
 
-server = "192.168.1.119"
+server = "localhost"
 port = 5555
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Types of connections we can make
@@ -22,15 +23,31 @@ class GameServer:
     def __init__(self):
         self.players = {} # This is where data about the players is stored
         self.game_state = "waiting"
+        self.connections = []
        # self.map_data = self.load_map_data()
         self.npcs = {}
-        self.items = {}
+        self.loot_items = []
         self.event_queue = []
         self.config = {
             "difficulty": "normal",
             "max_players": 10
         }
-        self.player_spawn_points = [(0,0), (400,0)]
+        self.player_spawn_points = [(0,0), (400,0), (255,255)]
+        
+
+    def generate_loot(self, num_items=5):
+        for _ in range(num_items):
+            x, y = random.randint(0, 490), random.randint(0, 490)
+            rarity = random.choice(["common", "rare", "epic"])
+            colour = (0, 255, 0) if rarity == "common" else (0, 0, 255) if rarity == "rare" else (255, 0, 0)
+            loot_item = loot(x, y, rarity, colour)
+            # Convert the loot object to a dictionary
+            self.loot_items.append({
+                'x': loot_item.x,
+                'y': loot_item.y,
+                'rarity': loot_item.rarity,
+                'colour': loot_item.colour
+            })
 
     #def load_map_data():
     #    pass
@@ -60,11 +77,16 @@ class GameServer:
 
 
 game_server = GameServer()
-
+game_server.generate_loot()
 
 
 def threaded_client(conn, player_id):
-    conn.send(pickle.dumps(game_server.players[player_id]))
+    global game_server
+    conn.send(pickle.dumps({'player': game_server.players[player_id], 'loot': game_server.loot_items}))
+    game_server.connections.append(conn)
+
+
+
     while True:
         try:
             data = pickle.loads(conn.recv(2048))
@@ -78,16 +100,19 @@ def threaded_client(conn, player_id):
                 print("Recieved data from player {player_id}: {data}")
                 
                 # Send back all player data
-                reply = game_server.players
-                conn.sendall(pickle.dumps(reply)) #encodes data
-                print("Sending to player {player_id}: {data}")
+                reply = {'players': game_server.players, 'loot': game_server.loot_items}
+                conn.sendall(pickle.dumps(reply))
+                # for player_conn in game_server.players:
+                #     player_conn.sendall(pickle.dumps(reply)) #encodes data 
+                # print("Sending to player {player_id}: {data}")
         
         except Exception as e:
             print(f"Exception: {e}")
             break
     print("Lost connection")
+    game_server.connections.remove(conn)
     conn.close()
-
+    del game_server.players[player_id]
 currentPlayer = 0
 while True:
     conn, addr = s.accept() #accepts any connections 

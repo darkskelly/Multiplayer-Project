@@ -1,30 +1,31 @@
-import random
+
 
 class loot:
-    RARITY_LEVELS = { #Change to hex code
-        'common': 'green',
-        'uncommon': 'blue',
-        'rare': 'purple',
-        'legendary': 'orange'
-    }
-
-    def __init__(self, rarity):
-        if rarity not in Loot.RARITY_LEVELS:
-            raise ValueError("Invalid rarity level")
+    def __init__(self, x, y, rarity, colour):
+        self.x = x
+        self.y = y
+        self.width = 10
+        self.height = 10
         self.rarity = rarity
-        self.color = Loot.RARITY_LEVELS[rarity]
+        self.colour = colour
+        self.rect = (x, y, self.width, self.height)
 
-    @staticmethod
-    def generate_random_loot():
-        roll = random.randint(1, 100)
-        if roll <= 50:
-            return Loot('common')
-        elif roll <= 80:
-            return Loot('uncommon')
-        elif roll <= 95:
-            return Loot('rare')
-        else:
-            return Loot('legendary')
+    def draw(self, win):
+        import pygame
+        pygame.draw.rect(win, self.colour, self.rect)
 
-    def __repr__(self):
-        return f"Loot(rarity={self.rarity}, color={self.color})"
+# def generate_loot(map_width, map_height, num_items):
+#     loot_items = []
+#     for _ in range(num_items):
+#         x = random.randint(0, map_width - 10)
+#         y = random.randint(0, map_height - 10)
+#         rarity = random.choice(['common', 'uncommon', 'rare', 'epic', 'legendary'])
+#         colour = {
+#             'common': (169, 169, 169),
+#             'uncommon': (0, 255, 0),
+#             'rare': (0, 0, 255),
+#             'epic': (128, 0, 128),
+#             'legendary': (255, 215, 0)
+#         }[rarity]
+#         loot_items.append(loot(x, y, rarity, colour))
+#     return loot_items
