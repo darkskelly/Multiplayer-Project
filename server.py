@@ -23,6 +23,7 @@ class GameServer:
     def __init__(self):
         self.players = {} # This is where data about the players is stored
         self.game_state = "waiting"
+        self.ready = {}
         self.connections = []
        # self.map_data = self.load_map_data()
         self.npcs = {}
@@ -38,15 +39,43 @@ class GameServer:
     def generate_loot(self, num_items=5):
         for _ in range(num_items):
             x, y = random.randint(0, 490), random.randint(0, 490)
-            rarity = random.choice(["common", "rare", "epic"])
-            colour = (0, 255, 0) if rarity == "common" else (0, 0, 255) if rarity == "rare" else (255, 0, 0)
-            loot_item = loot(x, y, rarity, colour)
+
+            rarity_value = random.randint(0, 100)
+            if rarity_value <= 50:
+                rarity = "common"
+            elif rarity_value <= 75:
+                rarity = "rare"
+            elif rarity_value <= 90:
+                rarity = "epic"
+            else:
+                rarity = "legendary"
+
+            if rarity == "common":
+                colour = (169, 169, 169)
+                name = "common"
+                item_value = 10
+            elif rarity == "rare":
+                colour =(0, 0, 255)
+                name = "common"
+                item_value = 10
+            elif rarity == "epic":
+                colour = (128, 0, 128)
+                name = "common"
+                item_value = 10
+            elif rarity == "legendary":
+                colour = (255, 215, 0)
+                name = "common"
+                item_value = 10
+            
+            loot_item = loot(x, y, rarity, colour, name, item_value)
             # Convert the loot object to a dictionary
             self.loot_items.append({
                 'x': loot_item.x,
                 'y': loot_item.y,
                 'rarity': loot_item.rarity,
-                'colour': loot_item.colour
+                'colour': loot_item.colour,
+                'name': loot_item.name ,
+                'item_value' : loot_item.item_value
             })
 
     #def load_map_data():
@@ -54,6 +83,7 @@ class GameServer:
     
     def add_player(self, player_id, player):
         self.players[player_id] = player.__dict__ #returns player as a dictionary
+        self.ready[player_id] = False
         event = {
             "type": "EVENT_TYPE_ADD_PLAYER",
             "player_id": player_id,
@@ -89,22 +119,29 @@ def threaded_client(conn, player_id):
 
     while True:
         try:
-            data = pickle.loads(conn.recv(2048))
+            data = pickle.loads(conn.recv(4096))
             if not data: #If no data is being recieved
                 print("Disconnected")
                 break
             else:
-
-                # Update the player data on the server
-                game_server.players[player_id] = data
-                print("Recieved data from player {player_id}: {data}")
-                
-                # Send back all player data
-                reply = {'players': game_server.players, 'loot': game_server.loot_items}
-                conn.sendall(pickle.dumps(reply))
-                # for player_conn in game_server.players:
-                #     player_conn.sendall(pickle.dumps(reply)) #encodes data 
-                # print("Sending to player {player_id}: {data}")
+                if data.get('type') == "ready":
+                    game_server.ready[player_id] = True
+                    both_ready = all(game_server.ready.values())
+                    response = {"both ready": both_ready}
+                    conn.sendall(pickle.dumps(response))
+                    if both_ready:
+                        game_server.game_state = "started"
+                else:
+                    # Update the player data on the server
+                    game_server.players[player_id] = data
+                    print("Recieved data from player {player_id}: {data}")
+                    
+                    # Send back all player data
+                    reply = {'players': game_server.players, 'loot': game_server.loot_items}
+                    conn.sendall(pickle.dumps(reply))
+                    # for player_conn in game_server.players:
+                    #     player_conn.sendall(pickle.dumps(reply)) #encodes data 
+                    # print("Sending to player {player_id}: {data}")
         
         except Exception as e:
             print(f"Exception: {e}")
@@ -113,6 +150,7 @@ def threaded_client(conn, player_id):
     game_server.connections.remove(conn)
     conn.close()
     del game_server.players[player_id]
+    del game_server.ready[player_id]
 currentPlayer = 0
 while True:
     conn, addr = s.accept() #accepts any connections 
