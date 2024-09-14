@@ -67,6 +67,7 @@ def handle_start_screen_events(stat_buttons, player):
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = event.pos
             for button in stat_buttons:
@@ -74,11 +75,13 @@ def handle_start_screen_events(stat_buttons, player):
                     button['value'] += 1
                     player.stat_points -= 1
                     setattr(player, button['name'].lower()[:3], getattr(player, button['name'].lower()[:3]) + 1)
+
             if ready_button.is_clicked(pos) and player.stat_points == 0:
                 ready_button.text = "Ready"
                 ready_button.colour = READY_BUTTON_COLOUR
-                return True
-    return False
+                player.ready = True
+                return {"ready": True, "id": player.id, "stats":player.get_stats()}
+    return None
 
 def redrawWindow(win,players, loot_items):
     win.fill((255,255,255))
@@ -105,7 +108,8 @@ def dict_to_player(data):
         dex=data.get('dex', 0),
         int=data.get('int', 0),
         sta=data.get('sta', 0),
-        per=data.get('per', 0)
+        per=data.get('per', 0),
+        ready=data['ready']
     )
 def dict_to_loot(data):
     """Convert a dictionary to a Loot object."""
@@ -133,6 +137,7 @@ def update_players(player, players):
     players[player.id].int = player.int
     players[player.id].sta = player.sta
     players[player.id].per = player.per
+    players[player.id].ready = player.ready
     players[player.id].update()
 
 def initialise_data(n):
@@ -167,7 +172,9 @@ def initialise_data(n):
 def main():
     run = True
     n = Network()
-
+    start_Screen = True
+    stat_buttons = create_stat_buttons()
+    both_ready = False
     players, loot_items, player1 = initialise_data(n)
 
     if players is None or loot_items is None or player1 is None:
@@ -175,50 +182,62 @@ def main():
         return
 
     clock = pygame.time.Clock()
+    
 
-    stat_buttons = create_stat_buttons()
-    both_ready = False
-
+    # Initial screen for stat allocation and ready check
     while not both_ready:
         draw_start_screen(win, stat_buttons, player1)
-        ready = handle_start_screen_events(stat_buttons, player1)
-        if ready:
-            # Send a ready signal to the server
-            response = n.send({"type": "ready", "id": player1.id, "stats": player1.get_stats()})
-            if response and response.get("both_ready"):
-                both_ready = True
+        ready_data = handle_start_screen_events(stat_buttons, player1)
 
+        if ready_data:
+            try:
+                # Send a ready signal to the server
+                response = n.send(ready_data)
+                if response and response.get('both_ready', False):
+                    both_ready = True
+            except Exception as e:
+                print(f"Error while sending ready data: {e}")
+
+    player = None
     while run:
         clock.tick(120)
+        try:
 
-        data = n.send(player1)
+            data = n.send(player1)
+            print(f"Recieved data from server: {data}")
 
-        print(f"Recieved data from server: {data}")
-
-        if data:
-            players_data = data.get('players')
-            loot_items_data = data.get('loot')
-            
-            try:
-                loot_items = [dict_to_loot(item) for item in loot_items_data]
-            except KeyError as e:
-                print(f"Error converting loot data: {e}")
-                continue
-            for player_id, player_data in players_data.items():
-                if player_id not in players:
-                    players[player_id] = dict_to_player(player_data)
+            if data:
+                players_data = data.get('players')
+                loot_items_data = data.get('loot')
+                
+                if players_data is not None:
+                    for player_id, player_data in players_data.items():
+                        if player_id not in players:
+                            players[player_id] = dict_to_player(player_data)
+                        else:
+                            try:
+                                player = dict_to_player(player_data)
+                                update_players(player, players)
+                            except ValueError as e:
+                                print(f"Error updating player ID: {player.id} data: {e}")
                 else:
-                    try:
-                        # Update player2's attributes using dictionary keys
-                        player = dict_to_player(player_data)
-                        update_players(player, players)
-                        
-                    except ValueError as e:
-                            print(f"Error updating player ID: {player.id} data: {e}")
-        else:
-            print(f"Player data for id {player.id} is not  available")
-        #    loot_items = [dict_to_loot(data) for data in loot_data]
-        
+                    print("Warning: Received None for players_data") 
+                                   
+                if loot_items_data is not None:
+                    loot_items = [dict_to_loot(item) for item in loot_items_data]
+                else:
+                    print(f"Warning: Recieved None for loot_items_data")
+
+            else:
+                if player:
+                    print(f"Player data for id {player.id} is not  available")
+            #    loot_items = [dict_to_loot(data) for data in loot_data]
+                else:
+                    print("No valid player data from the server")
+
+        except Exception as e:
+            print(f"Error recieving data from server: {e}")
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False

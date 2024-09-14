@@ -112,7 +112,7 @@ game_server.generate_loot()
 
 def threaded_client(conn, player_id):
     global game_server
-    conn.send(pickle.dumps({'player': game_server.players[player_id], 'loot': game_server.loot_items}))
+    conn.send(pickle.dumps({'player': game_server.players.get(player_id, {}), 'loot': game_server.loot_items}))
     game_server.connections.append(conn)
 
 
@@ -123,25 +123,40 @@ def threaded_client(conn, player_id):
             if not data: #If no data is being recieved
                 print("Disconnected")
                 break
-            else:
-                if data.get('type') == "ready":
-                    game_server.ready[player_id] = True
-                    both_ready = all(game_server.ready.values())
-                    response = {"both ready": both_ready}
-                    conn.sendall(pickle.dumps(response))
-                    if both_ready:
-                        game_server.game_state = "started"
+            
+
+            if 'ready' in data:
+                game_server.ready[player_id] = data['ready']
+                game_server.players[player_id]['ready'] = data['ready']
+                both_ready = all(game_server.ready.get(pid, False) for pid in game_server.players)
+
+                response = {'both_ready': both_ready}
+                conn.sendall(pickle.dumps(response))
+
+                if both_ready:
+                    game_server.game_state = "started"
+                    print(f"Game Started")
+                    for c in game_server.connections:
+                        try:
+                            c.sendall(pickle.dumps({'game_state': "started"}))
+                        except Exception as e:
+                            print(f"Erorr, notifying the client: {e}")
                 else:
-                    # Update the player data on the server
-                    game_server.players[player_id] = data
-                    print("Recieved data from player {player_id}: {data}")
-                    
-                    # Send back all player data
-                    reply = {'players': game_server.players, 'loot': game_server.loot_items}
-                    conn.sendall(pickle.dumps(reply))
-                    # for player_conn in game_server.players:
-                    #     player_conn.sendall(pickle.dumps(reply)) #encodes data 
-                    # print("Sending to player {player_id}: {data}")
+                    waiting_message = "Waiting for another player to ready up..."
+                    conn.sendall(pickle.dumps({'game_state': "waiting", 'message': waiting_message}))
+
+            else:
+                # Update the player data on the server
+                game_server.players[player_id] = data
+                print("Recieved data from player {player_id}: {data}")
+                
+                # Send back all player data
+                reply = {'players': game_server.players, 'loot': game_server.loot_items}
+                conn.sendall(pickle.dumps(reply))
+
+                # for player_conn in game_server.players:
+                #     player_conn.sendall(pickle.dumps(reply)) #encodes data 
+                # print("Sending to player {player_id}: {data}")
         
         except Exception as e:
             print(f"Exception: {e}")
