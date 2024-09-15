@@ -1,7 +1,7 @@
 
 
 class loot:
-    def __init__(self, x, y, rarity, colour):
+    def __init__(self, x, y, rarity, colour, lootid):
         self.x = x
         self.y = y
         self.width = 10
@@ -9,10 +9,12 @@ class loot:
         self.rarity = rarity
         self.colour = colour
         self.rect = (x, y, self.width, self.height)
-
+        self.lootid = lootid
     def draw(self, win):
         import pygame
         pygame.draw.rect(win, self.colour, self.rect)
+
+
 
 # def generate_loot(map_width, map_height, num_items):
 #     loot_items = []

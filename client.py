@@ -27,7 +27,8 @@ def dict_to_player(data):
         width=data['width'],
         height=data['height'],
         colour=tuple(data['colour']),
-        player_id=data['id']
+        player_id=data['id'],
+        inventory=data['inventory'] 
     )
 def dict_to_loot(data):
     """Convert a dictionary to a Loot object."""
@@ -36,12 +37,25 @@ def dict_to_loot(data):
             x=data['x'],
             y=data['y'],
             rarity=data['rarity'],
-            colour=tuple(data['colour'])
+            colour=tuple(data['colour']),
+            lootid=data['lootid']
         )
     except KeyError as e:
         print(f"Missing key in loot data: {e}")
         raise
 
+def handle_player_loot_collision(player, loot_items, keys):
+    """Handle player interaction with loot."""
+    for loot_item in loot_items:
+        if (player.x < loot_item.x + loot_item.width and
+            player.x + player.width > loot_item.x and
+            player.y < loot_item.y + loot_item.height and
+            player.y + player.height > loot_item.y):
+            
+            if keys[pygame.K_e]:  # Check if 'E' is pressed
+                player.inventory[loot_item.lootid] = loot_item
+                loot_items.remove(loot_item)  # Remove loot from the map
+                print(f"Picked up loot: {loot_item.lootid}")
 
 
 def main():
@@ -52,6 +66,7 @@ def main():
     if initial_data is None:
         print("Error: No initial data recieved.")
         return
+    
     player1_data = initial_data.get('player')
     loot_data = initial_data.get('loot')
     
@@ -68,25 +83,6 @@ def main():
     except KeyError as e:
         print(f"Error converting loot data: {e}")
         return
-    # if isinstance(player1_data, dict):
-    #     try:
-    #         player1 = dict_to_player(player1_data)
-    #         print(f"Player1 initialised: {player1_data}")
-    #     except ValueError as e:
-    #         print(f"Error converting player1 data: {e}")
-    #         return
-    # else:
-    #     print("Error: player1 data is not in expected format")
-    #     return
-    
-    
-    # Initialize player2 correctly based on player1's color
-    # if hasattr(player1, 'colour'):
-    #     player1.id = 0 if player1.colour == (255,0,0) else 1
-    #     player2 = Player(0, 0, 50, 50, (0, 0, 255), player_id=1 if player1.id == 0 else 0)
-    # else:
-    #     print("Player1 doesn't have 'colour' attribute")
-
 
     clock = pygame.time.Clock()
 
@@ -105,6 +101,7 @@ def main():
             except KeyError as e:
                 print(f"Error converting loot data: {e}")
                 continue
+
             for player_id, player_data in players_data.items():
                 if player_id not in players:
                     players[player_id] = dict_to_player(player_data)
@@ -127,6 +124,17 @@ def main():
                 run = False
                 pygame.quit()
         
+
+        keys = pygame.key.get_pressed()
+
+        # Handle player collisions
+        for other_player in players.values():
+            if player1.id != other_player.id:
+                player1.handle_collision(other_player, keys)
+
+        # Handle player-loot collision and interaction
+        handle_player_loot_collision(player1, loot_items, keys)
+
         player1.move()
         redrawWindow(win, players, loot_items)
 main()

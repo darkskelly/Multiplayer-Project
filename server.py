@@ -36,17 +36,20 @@ class GameServer:
         
 
     def generate_loot(self, num_items=5):
+        lootid = 0
         for _ in range(num_items):
             x, y = random.randint(0, 490), random.randint(0, 490)
             rarity = random.choice(["common", "rare", "epic"])
             colour = (0, 255, 0) if rarity == "common" else (0, 0, 255) if rarity == "rare" else (255, 0, 0)
-            loot_item = loot(x, y, rarity, colour)
+            lootid = lootid+1
+            loot_item = loot(x, y, rarity, colour, lootid)
             # Convert the loot object to a dictionary
             self.loot_items.append({
                 'x': loot_item.x,
                 'y': loot_item.y,
                 'rarity': loot_item.rarity,
-                'colour': loot_item.colour
+                'colour': loot_item.colour,
+                'lootid': loot_item.lootid
             })
 
     #def load_map_data():
@@ -82,10 +85,11 @@ game_server.generate_loot()
 
 def threaded_client(conn, player_id):
     global game_server
-    conn.send(pickle.dumps({'player': game_server.players[player_id], 'loot': game_server.loot_items}))
+    conn.send(pickle.dumps({'player': game_server.players[player_id], 
+                            'loot': game_server.loot_items
+                            }))
+    
     game_server.connections.append(conn)
-
-
 
     while True:
         try:
@@ -100,7 +104,9 @@ def threaded_client(conn, player_id):
                 print("Recieved data from player {player_id}: {data}")
                 
                 # Send back all player data
-                reply = {'players': game_server.players, 'loot': game_server.loot_items}
+                reply = {'players': game_server.players, 
+                         'loot': game_server.loot_items
+                        }
                 conn.sendall(pickle.dumps(reply))
                 # for player_conn in game_server.players:
                 #     player_conn.sendall(pickle.dumps(reply)) #encodes data 
