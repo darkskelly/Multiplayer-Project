@@ -193,12 +193,22 @@ def main():
             try:
                 # Send a ready signal to the server
                 response = n.send(ready_data)
+                print("Ready data sent, response: {response}")
+
                 if response and response.get('both_ready', False):
                     both_ready = True
+                    print("Both players are ready! Game will start soon.")    
+                    # if data.get('game_state') == "started":
+                    #     players_data = data.get('players', {})
+                    #     for player_id, player_data in players_data.items():
+                    #         if player_id not in players:
+                    #             players[player_id] = dict_to_player(player_data)
+
             except Exception as e:
                 print(f"Error while sending ready data: {e}")
 
     player = None
+    game_started = False
     while run:
         clock.tick(120)
         try:
@@ -207,6 +217,14 @@ def main():
             print(f"Recieved data from server: {data}")
 
             if data:
+                game_state = data.get('game_state', 'waiting')
+                if game_state == 'started' and not game_started:
+                    print("Game has started!")
+                    game_started = True
+                elif game_state == 'waiting':
+                    print(data.get('message', 'Waiting for players...'))
+
+
                 players_data = data.get('players')
                 loot_items_data = data.get('loot')
                 
@@ -244,5 +262,7 @@ def main():
                 pygame.quit()
         
         player1.move()
-        redrawWindow(win, players, loot_items)
+        if game_started:
+            redrawWindow(win, players, loot_items)
+            
 main()

@@ -112,7 +112,13 @@ game_server.generate_loot()
 
 def threaded_client(conn, player_id):
     global game_server
-    conn.send(pickle.dumps({'player': game_server.players.get(player_id, {}), 'loot': game_server.loot_items}))
+
+    conn.send(pickle.dumps({
+        'player': game_server.players.get(player_id, {}), 
+        'players': game_server.players,
+        'loot': game_server.loot_items
+        }))
+    
     game_server.connections.append(conn)
 
 
@@ -126,6 +132,11 @@ def threaded_client(conn, player_id):
             
 
             if 'ready' in data:
+                game_server.players[player_id] = data  # Update player data
+                reply = {'players': game_server.players, 
+                         'loot': game_server.loot_items}
+                conn.sendall(pickle.dumps(reply))  # Send data back to client
+
                 game_server.ready[player_id] = data['ready']
                 game_server.players[player_id]['ready'] = data['ready']
                 both_ready = all(game_server.ready.get(pid, False) for pid in game_server.players)
@@ -138,12 +149,18 @@ def threaded_client(conn, player_id):
                     print(f"Game Started")
                     for c in game_server.connections:
                         try:
-                            c.sendall(pickle.dumps({'game_state': "started"}))
+                            c.sendall(pickle.dumps({'game_state': "started", 
+                                                    'players': game_server.players
+                                                    }))
+                            
                         except Exception as e:
                             print(f"Erorr, notifying the client: {e}")
                 else:
                     waiting_message = "Waiting for another player to ready up..."
-                    conn.sendall(pickle.dumps({'game_state': "waiting", 'message': waiting_message}))
+
+                    conn.sendall(pickle.dumps({'game_state': "waiting", 
+                                               'message': waiting_message
+                                               }))
 
             else:
                 # Update the player data on the server
@@ -151,7 +168,9 @@ def threaded_client(conn, player_id):
                 print("Recieved data from player {player_id}: {data}")
                 
                 # Send back all player data
-                reply = {'players': game_server.players, 'loot': game_server.loot_items}
+                reply = {'players': game_server.players, 
+                         'loot': game_server.loot_items
+                         }
                 conn.sendall(pickle.dumps(reply))
 
                 # for player_conn in game_server.players:
